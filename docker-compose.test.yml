@@ -1,0 +1,33 @@
+services:
+  app-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: digital-wallet-api-test
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./coverage:/var/www/html/coverage
+    environment:
+      - APP_ENV=testing
+      - APP_DEBUG=true
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/var/www/html/database/testing.sqlite
+      - XDEBUG_MODE=coverage
+    networks:
+      - wallet-test-network
+    command: >
+      sh -c "
+        composer install --no-interaction &&
+        php artisan key:generate --force &&
+        php artisan jwt:secret --force &&
+        touch /var/www/html/database/testing.sqlite &&
+        php artisan migrate:fresh --force --seed &&
+        echo '✅ Container pronto para testes!' &&
+        echo '📊 Execute: docker compose -f docker-compose.test.yml exec app-test php artisan test --coverage-html coverage' &&
+        tail -f /dev/null
+      "
+
+networks:
+  wallet-test-network:
+    driver: bridge

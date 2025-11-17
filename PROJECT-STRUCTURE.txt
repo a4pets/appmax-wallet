@@ -1,0 +1,186 @@
+digital-wallet-api/
+│
+├── 📄 README.md                     # Documentação principal para desenvolvedores
+├── 📄 composer.json                 # Dependências PHP
+├── 📄 phpunit.xml                   # Configuração de testes
+├── 📄 .env.example                  # Template de variáveis de ambiente
+│
+├── 🐳 Docker
+│   ├── docker-compose.yml           # Container de desenvolvimento
+│   ├── docker-compose.test.yml      # Container de testes (com Xdebug)
+│   ├── Dockerfile.test              # Imagem de testes
+│   ├── test-coverage.sh             # Script completo (build + testes)
+│   └── test-run.sh                  # Script rápido (apenas testes)
+│
+├── 📚 docs/
+│   └── TESTING.md                   # Documentação detalhada de testes
+│
+├── 📦 examples/
+│   ├── README.md                    # Guia dos exemplos
+│   ├── api-usage.sh                 # Script de teste automático da API
+│   ├── Digital-Wallet-API.postman_collection.json # Collection Postman
+│   └── sqlite-queries.sql           # Queries SQL úteis
+│
+├── 🎨 app/
+│   ├── Exceptions/                  # Exceções customizadas
+│   │   ├── InsufficientBalanceException.php
+│   │   ├── DailyLimitExceededException.php
+│   │   ├── InvalidAccountException.php
+│   │   └── InvalidTransferException.php
+│   │
+│   ├── Http/
+│   │   ├── Controllers/Api/
+│   │   │   ├── AuthController.php   # Autenticação (register, login, logout)
+│   │   │   └── WalletController.php # Operações da carteira
+│   │   │
+│   │   ├── Middleware/
+│   │   │   └── JwtMiddleware.php    # Autenticação JWT
+│   │   │
+│   │   ├── Requests/                # Validação de requests
+│   │   │   ├── RegisterRequest.php
+│   │   │   ├── LoginRequest.php
+│   │   │   ├── DepositRequest.php
+│   │   │   ├── WithdrawRequest.php
+│   │   │   ├── TransferRequest.php
+│   │   │   └── StatementRequest.php
+│   │   │
+│   │   └── Resources/               # Serialização de respostas
+│   │       ├── UserResource.php
+│   │       ├── BalanceResource.php
+│   │       ├── TransactionResource.php
+│   │       └── TransferResource.php
+│   │
+│   └── Models/                      # Models Eloquent
+│       ├── User.php
+│       ├── Account.php
+│       ├── Balance.php
+│       ├── Transaction.php
+│       ├── TransactionType.php
+│       ├── Transfer.php
+│       └── DailyLimit.php
+│
+├── 🗄️ database/
+│   ├── database.sqlite              # Banco de dados principal
+│   ├── testing.sqlite               # Banco de dados de testes
+│   │
+│   ├── migrations/                  # Migrations
+│   │   ├── create_users_table.php
+│   │   ├── create_accounts_table.php
+│   │   ├── create_balances_table.php
+│   │   ├── create_transactions_table.php
+│   │   ├── create_transfers_table.php
+│   │   └── create_daily_limits_table.php
+│   │
+│   ├── seeders/                     # Seeders
+│   │   ├── TransactionTypeSeeder.php
+│   │   └── InitialAccountSeeder.php
+│   │
+│   └── factories/                   # Factories para testes
+│       └── UserFactory.php
+│
+├── 🛣️ routes/
+│   └── api.php                      # Rotas da API
+│
+├── 🧪 tests/
+│   ├── Feature/                     # Testes de integração (77 testes)
+│   │   ├── AuthenticationTest.php   # 12 testes
+│   │   ├── ExceptionHandlingTest.php # 14 testes
+│   │   ├── TransactionDetailTest.php # 7 testes
+│   │   ├── WalletBalanceTest.php    # 6 testes
+│   │   ├── WalletDepositTest.php    # 10 testes
+│   │   ├── WalletTransferTest.php   # 14 testes
+│   │   └── WalletWithdrawTest.php   # 12 testes
+│   │
+│   └── Unit/                        # Testes unitários
+│       └── ExampleTest.php
+│
+├── 📊 coverage/                     # Relatórios de cobertura (gerado)
+│   └── index.html                   # Relatório HTML
+│
+└── 🔧 config/                       # Configurações Laravel
+    ├── auth.php
+    ├── database.php
+    └── jwt.php
+
+ENDPOINTS DA API:
+─────────────────
+
+📍 Autenticação (Públicas)
+  POST   /api/auth/register         # Registrar usuário
+  POST   /api/auth/login            # Login
+
+📍 Autenticação (Protegidas - JWT)
+  POST   /api/auth/logout           # Logout
+  POST   /api/auth/refresh          # Refresh token
+  GET    /api/auth/me               # Dados do usuário autenticado
+
+📍 Carteira (Protegidas - JWT)
+  GET    /api/wallet/balance        # Consultar saldo
+  POST   /api/wallet/deposit        # Depositar
+  POST   /api/wallet/withdraw       # Sacar
+  POST   /api/wallet/transfer       # Transferir
+  POST   /api/wallet/chargeback     # Estornar
+  POST   /api/wallet/contestar      # Contestar
+  GET    /api/wallet/transaction/{id} # Detalhes da transação
+  GET    /api/wallet/statement      # Extrato
+
+BANCO DE DADOS:
+───────────────
+
+📊 Principais Tabelas:
+  • users              - Usuários do sistema
+  • accounts           - Contas bancárias
+  • balances           - Saldos das contas
+  • transactions       - Todas as transações
+  • transaction_types  - Tipos de transação (DEPOSIT, WITHDRAW, etc.)
+  • transfers          - Registro de transferências
+  • daily_limits       - Limites diários por operação
+
+COMANDOS ÚTEIS:
+───────────────
+
+🚀 Docker:
+  docker compose up -d                    # Iniciar
+  docker compose logs -f                  # Ver logs
+  docker compose exec app sh              # Entrar no container
+  docker compose down                     # Parar
+
+🧪 Testes:
+  ./test-coverage.sh                      # Testes com coverage (Docker)
+  ./test-run.sh                           # Testes rápidos (Docker)
+  php artisan test                        # Testes locais
+  php artisan test --coverage-html coverage # Coverage local
+
+🗄️ SQLite:
+  sqlite3 database/database.sqlite        # Abrir banco
+  sqlite3 database/database.sqlite < examples/sqlite-queries.sql # Executar queries
+
+📦 Laravel:
+  php artisan migrate                     # Rodar migrations
+  php artisan migrate:fresh --seed        # Resetar banco
+  php artisan cache:clear                 # Limpar cache
+  php artisan route:list                  # Listar rotas
+  php artisan l5-swagger:generate         # Gerar Swagger
+
+RECURSOS:
+─────────
+
+✅ 77 testes automatizados (100% passando)
+✅ 295 assertions
+✅ Cobertura de código com Xdebug
+✅ Docker configurado para dev e testes
+✅ Autenticação JWT
+✅ Limites diários por operação
+✅ Sistema de estorno e contestação
+✅ Extrato com consolidação diária
+✅ Documentação Swagger/OpenAPI
+✅ Postman Collection
+✅ Scripts de exemplo
+✅ Queries SQL prontas
+
+LIMITES PADRÃO:
+───────────────
+
+💰 Depósito:      R$ 10.000,00/dia
+💸 Saque:         R$  5.000,00/dia
+🔄 Transferência: R$  5.000,00/dia
