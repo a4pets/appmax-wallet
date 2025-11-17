@@ -996,9 +996,9 @@ class WalletController extends Controller
             $processedTransactions = $dayTransactions->sortByDesc('created_at')->map(function ($transaction) use (&$totalCredits, &$totalDebits) {
                 $type = $transaction->transactionType->code;
 
-                if (in_array($type, ['deposit', 'transfer_received'])) {
+                if (in_array($type, ['DEPOSIT', 'TRANSFER_RECEIVED'])) {
                     $totalCredits += $transaction->amount;
-                } else if (in_array($type, ['withdraw', 'transfer_sent'])) {
+                } else if (in_array($type, ['WITHDRAW', 'TRANSFER_SENT'])) {
                     $totalDebits += $transaction->amount;
                 }
 
@@ -1027,11 +1027,11 @@ class WalletController extends Controller
         // Calculate summary
         $allTransactions = $transactions;
         $totalCredits = $allTransactions->filter(function ($t) {
-            return in_array($t->transactionType->code, ['deposit', 'transfer_received']);
+            return in_array($t->transactionType->code, ['DEPOSIT', 'TRANSFER_RECEIVED']);
         })->sum('amount');
 
         $totalDebits = $allTransactions->filter(function ($t) {
-            return in_array($t->transactionType->code, ['withdraw', 'transfer_sent']);
+            return in_array($t->transactionType->code, ['WITHDRAW', 'TRANSFER_SENT']);
         })->sum('amount');
 
         $closingBalancePeriod = $openingBalancePeriod + $totalCredits - $totalDebits;
