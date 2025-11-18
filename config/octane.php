@@ -73,40 +73,37 @@ return [
         RequestReceived::class => [
             ...Octane::prepareApplicationForNextOperation(),
             ...Octane::prepareApplicationForNextRequest(),
-            //
+
         ],
 
         RequestHandled::class => [
-            //
+
         ],
 
         RequestTerminated::class => [
-            // FlushUploadedFiles::class,
         ],
 
         TaskReceived::class => [
             ...Octane::prepareApplicationForNextOperation(),
-            //
+
         ],
 
         TaskTerminated::class => [
-            //
+
         ],
 
         TickReceived::class => [
             ...Octane::prepareApplicationForNextOperation(),
-            //
+
         ],
 
         TickTerminated::class => [
-            //
+
         ],
 
         OperationTerminated::class => [
             FlushOnce::class,
             FlushTemporaryContainerInstances::class,
-            // DisconnectFromDatabases::class,
-            // CollectGarbage::class,
         ],
 
         WorkerErrorOccurred::class => [
@@ -135,7 +132,7 @@ return [
     ],
 
     'flush' => [
-        //
+
     ],
 
     /*

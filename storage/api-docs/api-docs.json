@@ -303,6 +303,21 @@
                                                 "status": {
                                                     "type": "string",
                                                     "example": "active"
+                                                },
+                                                "daily_limit": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 5000
+                                                },
+                                                "daily_used": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 0
+                                                },
+                                                "daily_available": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 5000
                                                 }
                                             },
                                             "type": "object"

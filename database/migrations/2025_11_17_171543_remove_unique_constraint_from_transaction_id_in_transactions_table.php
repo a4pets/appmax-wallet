@@ -14,14 +14,12 @@ return new class extends Migration
         $driver = Schema::getConnection()->getDriverName();
 
         if ($driver === 'sqlite') {
-            // For SQLite, we need to check which index exists and drop it
             $indexes = \DB::select("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='transactions' AND (name LIKE '%reference%unique' OR name LIKE '%transaction_id%unique')");
 
             foreach ($indexes as $index) {
                 \DB::statement("DROP INDEX IF EXISTS {$index->name}");
             }
 
-            // Create a non-unique index
             \DB::statement("CREATE INDEX IF NOT EXISTS transactions_transaction_id_index ON transactions(transaction_id)");
         } else {
             Schema::table('transactions', function (Blueprint $table) {

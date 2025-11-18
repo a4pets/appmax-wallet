@@ -20,7 +20,7 @@ use OpenApi\Attributes as OA;
     title: 'Digital Wallet API',
     description: 'API REST para gerenciamento de carteira digital com autenticação JWT'
 )]
-#[OA\Server(url: 'http://localhost:8000', description: 'Local Server')]
+#[OA\Server(url: 'http:
 #[OA\SecurityScheme(
     securityScheme: 'bearerAuth',
     type: 'http',
@@ -82,20 +82,17 @@ class AuthController extends Controller
         try {
             DB::beginTransaction();
 
-            // Create user
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => bcrypt($request->password),
             ]);
 
-            // Generate account number and details
             $accountNumber = 'DW' . str_pad((string) rand(1, 99999999), 8, '0', STR_PAD_LEFT);
             $agency = str_pad((string) rand(1, 9999), 4, '0', STR_PAD_LEFT);
             $accountNum = str_pad((string) rand(1, 999999999), 9, '0', STR_PAD_LEFT);
             $digit = rand(0, 9);
 
-            // Create account
             $account = Account::create([
                 'user_id' => $user->id,
                 'agency' => $agency,
@@ -106,13 +103,11 @@ class AuthController extends Controller
                 'status' => 'active',
             ]);
 
-            // Create initial balance
             Balance::create([
                 'account_id' => $account->id,
                 'amount' => 0.00,
             ]);
 
-            // Create daily limits
             $limits = [
                 ['account_id' => $account->id, 'limit_type' => 'deposit', 'daily_limit' => 10000.00, 'current_used' => 0, 'reset_at' => now()->toDateString()],
                 ['account_id' => $account->id, 'limit_type' => 'withdraw', 'daily_limit' => 5000.00, 'current_used' => 0, 'reset_at' => now()->toDateString()],
@@ -122,7 +117,6 @@ class AuthController extends Controller
 
             DB::commit();
 
-            // Generate JWT token
             $token = JWTAuth::fromUser($user);
 
             return response()->json([
@@ -202,7 +196,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $user = auth()->user();
+        $user = JWTAuth::user();
 
         return response()->json([
             'data' => [

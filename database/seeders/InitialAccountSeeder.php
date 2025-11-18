@@ -12,16 +12,45 @@ class InitialAccountSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create a test user
-        $user = \DB::table('users')->insertGetId([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'password' => \Hash::make('password'),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $existingUser = \DB::table('users')->where('email', 'test@example.com')->first();
 
-        // Create an account for the user
+        if ($existingUser) {
+            $existingAccount = \DB::table('accounts')->where('user_id', $existingUser->id)->first();
+
+            if ($existingAccount && (empty($existingAccount->agency) || empty($existingAccount->account))) {
+                $agency = str_pad((string) rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                $accountNum = str_pad((string) rand(1, 999999999), 9, '0', STR_PAD_LEFT);
+                $digit = rand(0, 9);
+
+                \DB::table('accounts')
+                    ->where('id', $existingAccount->id)
+                    ->update([
+                        'agency' => $agency,
+                        'account' => $accountNum,
+                        'account_digit' => $digit,
+                        'updated_at' => now(),
+                    ]);
+
+                $this->command->info('Test user account updated with agency and account number.');
+                return;
+            }
+
+            if ($existingAccount) {
+                $this->command->info('Test user already exists with complete account information. Skipping initial account seeder.');
+                return;
+            }
+
+            $user = $existingUser->id;
+        } else {
+            $user = \DB::table('users')->insertGetId([
+                'name' => 'Test User',
+                'email' => 'test@example.com',
+                'password' => \Hash::make('password'),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         $accountNumber = 'DW' . str_pad((string) rand(1, 99999999), 8, '0', STR_PAD_LEFT);
         $agency = str_pad((string) rand(1, 9999), 4, '0', STR_PAD_LEFT);
         $accountNum = str_pad((string) rand(1, 999999999), 9, '0', STR_PAD_LEFT);
@@ -39,14 +68,12 @@ class InitialAccountSeeder extends Seeder
             'updated_at' => now(),
         ]);
 
-        // Create initial balance for the account (starting with 0)
         \DB::table('balances')->insert([
             'account_id' => $account,
             'amount' => 0.00,
             'updated_at' => now(),
         ]);
 
-        // Create daily limits for the account
         $dailyLimits = [
             [
                 'account_id' => $account,
@@ -78,5 +105,7 @@ class InitialAccountSeeder extends Seeder
         ];
 
         \DB::table('daily_limits')->insert($dailyLimits);
+
+        $this->command->info('Test user created successfully!');
     }
 }

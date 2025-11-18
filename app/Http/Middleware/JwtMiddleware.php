@@ -22,7 +22,6 @@ class JwtMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         try {
-            // Attempt to verify the token and get the user
             $user = JWTAuth::parseToken()->authenticate();
 
             if (!$user) {

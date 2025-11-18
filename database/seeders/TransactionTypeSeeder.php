@@ -57,6 +57,6 @@ class TransactionTypeSeeder extends Seeder
             ],
         ];
 
-        \DB::table('transaction_types')->insert($transactionTypes);
+        \DB::table('transaction_types')->insertOrIgnore($transactionTypes);
     }
 }

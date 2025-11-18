@@ -1,6 +1,5 @@
 FROM php:8.3-fpm-alpine
 
-# Install system dependencies
 RUN apk add --no-cache \
     git \
     curl \
@@ -10,61 +9,62 @@ RUN apk add --no-cache \
     sqlite-dev \
     nginx \
     supervisor \
-    $PHPIZE_DEPS \
     linux-headers \
+    openssl-dev \
     postgresql-dev \
-    openssl-dev
+    $PHPIZE_DEPS
 
-# Install PHP extensions
 RUN docker-php-ext-install pdo pdo_sqlite opcache pcntl
 
-# Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
 
-# Install Swoole extension
-RUN pecl install swoole && docker-php-ext-enable swoole
+RUN yes no | pecl install swoole && docker-php-ext-enable swoole
 
-# Configure OPcache with JIT
-RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.interned_strings_buffer=16" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.max_accelerated_files=10000" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.revalidate_freq=2" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.fast_shutdown=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.enable_cli=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.jit_buffer_size=100M" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.jit=tracing" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache.ini
+RUN { \
+    echo "opcache.enable=1"; \
+    echo "opcache.memory_consumption=256"; \
+    echo "opcache.interned_strings_buffer=16"; \
+    echo "opcache.max_accelerated_files=20000"; \
+    echo "opcache.revalidate_freq=60"; \
+    echo "opcache.fast_shutdown=1"; \
+    echo "opcache.enable_cli=1"; \
+    echo "opcache.jit_buffer_size=120M"; \
+    echo "opcache.jit=tracing"; \
+    echo "opcache.validate_timestamps=0"; \
+} > /usr/local/etc/php/conf.d/opcache.ini
 
-# Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /var/www/html
 
-# Copy existing application directory
-COPY . /var/www/html
+COPY composer.json composer.lock artisan ./
 
-# Copy nginx config
+RUN mkdir -p bootstrap/cache storage/framework/sessions storage/framework/views storage/framework/cache
+
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
+
+COPY . .
+
+RUN composer run-script post-autoload-dump
+
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 storage bootstrap/cache
+
+RUN mkdir -p database \
+    && touch database/database.sqlite \
+    && chown www-data:www-data database/database.sqlite
+
 COPY docker/nginx.conf /etc/nginx/nginx.conf
-
-# Copy supervisor config
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN ln -sf /dev/stdout /var/log/nginx/access.log \
+ && ln -sf /dev/stderr /var/log/nginx/error.log
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
+RUN mkdir -p /var/log/supervisor
 
-# Create SQLite database file
-RUN touch /var/www/html/database/database.sqlite \
-    && chown www-data:www-data /var/www/html/database/database.sqlite
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
 
-# Expose port 80
 EXPOSE 80
 
-# Start supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

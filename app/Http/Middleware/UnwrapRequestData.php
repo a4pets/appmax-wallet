@@ -18,12 +18,9 @@ class UnwrapRequestData
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Only process if request has JSON content and contains 'data' key
         if ($request->isJson() && $request->has('data') && is_array($request->input('data'))) {
-            // Get the data envelope
             $data = $request->input('data');
 
-            // Replace request data with unwrapped content
             $request->replace($data);
         }
 

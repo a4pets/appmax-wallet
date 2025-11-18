@@ -51,7 +51,6 @@ class UserFactory extends Factory
     public function withAccount(float $initialBalance = 0.0): static
     {
         return $this->afterCreating(function (\App\Models\User $user) use ($initialBalance) {
-            // Create account directly with insert to avoid transaction issues
             $accountData = [
                 'user_id' => $user->id,
                 'agency' => str_pad((string) rand(1, 9999), 4, '0', STR_PAD_LEFT),
@@ -66,7 +65,6 @@ class UserFactory extends Factory
 
             $accountId = \DB::table('accounts')->insertGetId($accountData);
 
-            // Create balance directly with insert
             \DB::table('balances')->insert([
                 'account_id' => $accountId,
                 'amount' => $initialBalance,

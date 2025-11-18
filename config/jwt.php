@@ -53,7 +53,7 @@ return [
         |
         | A path or resource to your public key.
         |
-        | E.g. 'file://path/to/public/key'
+        | E.g. 'file:
         |
         */
 
@@ -66,7 +66,7 @@ return [
         |
         | A path or resource to your private key.
         |
-        | E.g. 'file://path/to/private/key'
+        | E.g. 'file:
         |
         */
 
@@ -167,8 +167,6 @@ return [
     */
 
     'persistent_claims' => [
-        // 'foo',
-        // 'bar',
     ],
 
     /*
@@ -243,7 +241,7 @@ return [
     | If you decide to not decrypt cookies, you will have to configure Laravel
     | to not encrypt your cookie token by adding its name into the $except
     | array available in the middleware "EncryptCookies" provided by Laravel.
-    | see https://laravel.com/docs/master/responses#cookies-and-encryption
+    | see https:
     | for details.
     |
     | Set it to true if you want to decrypt cookies.

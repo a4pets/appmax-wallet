@@ -68,7 +68,6 @@ class WalletController extends Controller
     {
         $user = auth()->user();
 
-        // Get user's first account
         $account = Account::where('user_id', $user->id)
             ->where('status', 'active')
             ->with('balance')
@@ -78,10 +77,9 @@ class WalletController extends Controller
             throw new InvalidAccountException('Conta não encontrada ou inativa');
         }
 
-        // Get or create daily limit for withdrawals
         $dailyLimit = DailyLimit::where('account_id', $account->id)
             ->where('limit_type', 'withdraw')
-            ->where('reset_at', now()->toDateString())
+            ->whereDate('reset_at', now()->toDateString())
             ->first();
 
         if (!$dailyLimit) {
@@ -94,12 +92,15 @@ class WalletController extends Controller
                     'reset_at' => now()->toDateString(),
                 ]);
             } catch (\Exception $e) {
-                // If constraint fails, fetch the existing record
                 $dailyLimit = DailyLimit::where('account_id', $account->id)
                     ->where('limit_type', 'withdraw')
-                    ->where('reset_at', now()->toDateString())
+                    ->whereDate('reset_at', now()->toDateString())
                     ->first();
             }
+        }
+
+        if (!$dailyLimit) {
+            throw new \Exception('Unable to retrieve or create daily limit record for withdraw');
         }
 
         return response()->json([
@@ -167,7 +168,6 @@ class WalletController extends Controller
 
         $amount = $request->amount;
 
-        // Check daily limit
         $today = now()->toDateString();
         try {
             $dailyLimit = DailyLimit::firstOrCreate(
@@ -182,19 +182,16 @@ class WalletController extends Controller
                 ]
             );
         } catch (\Exception $e) {
-            // Handle race condition - fetch existing record
             $dailyLimit = DailyLimit::where('account_id', $account->id)
                 ->where('limit_type', 'deposit')
                 ->whereDate('reset_at', $today)
                 ->first();
         }
 
-        // Refresh to get latest data
         if ($dailyLimit) {
             $dailyLimit->refresh();
         }
 
-        // Verify we have a daily limit record
         if (!$dailyLimit) {
             DB::rollBack();
             throw new \Exception('Unable to retrieve or create daily limit record for deposit');
@@ -210,18 +207,14 @@ class WalletController extends Controller
             );
         }
 
-        // Get transaction type
         $transactionType = TransactionType::where('code', 'DEPOSIT')->first();
 
-        // Get current balance
         $balance = $account->balance;
         $balanceBefore = $balance->amount;
         $balanceAfter = $balanceBefore + $amount;
 
-        // Update balance
         $balance->update(['amount' => $balanceAfter]);
 
-        // Create transaction
         $transaction = Transaction::create([
             'account_id' => $account->id,
             'transaction_type_id' => $transactionType->id,
@@ -233,7 +226,6 @@ class WalletController extends Controller
             'transaction_id' => 'DEP-' . now()->format('YmdHis') . '-' . uniqid('', true),
         ]);
 
-        // Update daily limit
         $dailyLimit->increment('current_used', $amount);
 
         DB::commit();
@@ -295,13 +287,11 @@ class WalletController extends Controller
         $amount = $request->amount;
         $balance = $account->balance;
 
-        // Check sufficient balance
         if ($balance->amount < $amount) {
             DB::rollBack();
             throw new InsufficientBalanceException($balance->amount, $amount);
         }
 
-        // Check daily limit
         $today = now()->toDateString();
         try {
             $dailyLimit = DailyLimit::firstOrCreate(
@@ -316,19 +306,16 @@ class WalletController extends Controller
                 ]
             );
         } catch (\Exception $e) {
-            // Handle race condition - fetch existing record
             $dailyLimit = DailyLimit::where('account_id', $account->id)
                 ->where('limit_type', 'withdraw')
                 ->whereDate('reset_at', $today)
                 ->first();
         }
 
-        // Refresh to get latest data
         if ($dailyLimit) {
             $dailyLimit->refresh();
         }
 
-        // Verify we have a daily limit record
         if (!$dailyLimit) {
             DB::rollBack();
             throw new \Exception('Unable to retrieve or create daily limit record for withdraw');
@@ -344,17 +331,13 @@ class WalletController extends Controller
             );
         }
 
-        // Get transaction type
         $transactionType = TransactionType::where('code', 'WITHDRAW')->first();
 
-        // Calculate new balance
         $balanceBefore = $balance->amount;
         $balanceAfter = $balanceBefore - $amount;
 
-        // Update balance
         $balance->update(['amount' => $balanceAfter]);
 
-        // Create transaction
         $transaction = Transaction::create([
             'account_id' => $account->id,
             'transaction_type_id' => $transactionType->id,
@@ -366,7 +349,6 @@ class WalletController extends Controller
             'transaction_id' => 'WIT-' . now()->format('YmdHis') . '-' . uniqid('', true),
         ]);
 
-        // Update daily limit
         $dailyLimit->increment('current_used', $amount);
 
         DB::commit();
@@ -427,16 +409,13 @@ class WalletController extends Controller
             throw new InvalidAccountException('Conta de origem não encontrada ou inativa');
         }
 
-        // Get receiver account - support both account_number and agency+account
         $receiverQuery = Account::where('status', 'active')
             ->with('balance')
             ->lockForUpdate();
 
         if ($request->filled('receiver_account_number')) {
-            // Old format: using account_number (DW12345678)
             $receiverQuery->where('account_number', $request->receiver_account_number);
         } elseif ($request->filled('receiver_agency') && $request->filled('receiver_account')) {
-            // New format: using agency + account
             $receiverQuery->where('agency', $request->receiver_agency)
                 ->where('account', $request->receiver_account);
         } else {
@@ -451,7 +430,6 @@ class WalletController extends Controller
             throw new InvalidAccountException('Conta de destino não encontrada ou inativa');
         }
 
-        // Cannot transfer to same account
         if ($senderAccount->id === $receiverAccount->id) {
             DB::rollBack();
             throw new InvalidTransferException('Não é possível transferir para a mesma conta');
@@ -460,13 +438,11 @@ class WalletController extends Controller
         $amount = $request->amount;
         $senderBalance = $senderAccount->balance;
 
-        // Check sufficient balance
         if ($senderBalance->amount < $amount) {
             DB::rollBack();
             throw new InsufficientBalanceException($senderBalance->amount, $amount);
         }
 
-        // Check daily limit
         $today = now()->toDateString();
         try {
             $dailyLimit = DailyLimit::firstOrCreate(
@@ -481,19 +457,16 @@ class WalletController extends Controller
                 ]
             );
         } catch (\Exception $e) {
-            // Handle race condition - fetch existing record
             $dailyLimit = DailyLimit::where('account_id', $senderAccount->id)
                 ->where('limit_type', 'transfer')
                 ->whereDate('reset_at', $today)
                 ->first();
         }
 
-        // Refresh to get latest data
         if ($dailyLimit) {
             $dailyLimit->refresh();
         }
 
-        // Verify we have a daily limit record
         if (!$dailyLimit) {
             DB::rollBack();
             throw new \Exception('Unable to retrieve or create daily limit record for transfer');
@@ -509,19 +482,15 @@ class WalletController extends Controller
             );
         }
 
-        // Get transaction types
         $transferSentType = TransactionType::where('code', 'TRANSFER_SENT')->first();
         $transferReceivedType = TransactionType::where('code', 'TRANSFER_RECEIVED')->first();
 
-        // Generate transaction ID
         $transactionId = 'TRF-' . now()->format('YmdHis') . '-' . uniqid('', true);
 
-        // Update sender balance
         $senderBalanceBefore = $senderBalance->amount;
         $senderBalanceAfter = $senderBalanceBefore - $amount;
         $senderBalance->update(['amount' => $senderBalanceAfter]);
 
-        // Create sender transaction
         $senderTransaction = Transaction::create([
             'account_id' => $senderAccount->id,
             'transaction_type_id' => $transferSentType->id,
@@ -534,13 +503,11 @@ class WalletController extends Controller
             'metadata' => ['receiver_account' => $receiverAccount->account_number],
         ]);
 
-        // Update receiver balance
         $receiverBalance = $receiverAccount->balance;
         $receiverBalanceBefore = $receiverBalance->amount;
         $receiverBalanceAfter = $receiverBalanceBefore + $amount;
         $receiverBalance->update(['amount' => $receiverBalanceAfter]);
 
-        // Create receiver transaction
         $receiverTransaction = Transaction::create([
             'account_id' => $receiverAccount->id,
             'transaction_type_id' => $transferReceivedType->id,
@@ -553,7 +520,6 @@ class WalletController extends Controller
             'metadata' => ['sender_account' => $senderAccount->account_number],
         ]);
 
-        // Create transfer record
         $transfer = Transfer::create([
             'sender_account_id' => $senderAccount->id,
             'receiver_account_id' => $receiverAccount->id,
@@ -563,7 +529,6 @@ class WalletController extends Controller
             'transaction_id' => $transactionId,
         ]);
 
-        // Update daily limit
         $dailyLimit->increment('current_used', $amount);
 
         DB::commit();
@@ -624,7 +589,6 @@ class WalletController extends Controller
             throw new InvalidAccountException('Conta não encontrada ou inativa');
         }
 
-        // Get the original transaction
         $originalTransaction = Transaction::where('id', $request->transaction_id)
             ->where('account_id', $account->id)
             ->lockForUpdate()
@@ -637,7 +601,6 @@ class WalletController extends Controller
             ], 404);
         }
 
-        // Check if already chargebacked
         if ($originalTransaction->is_chargebacked) {
             DB::rollBack();
             return response()->json([
@@ -645,7 +608,6 @@ class WalletController extends Controller
             ], 422);
         }
 
-        // Cannot chargeback a chargeback
         if ($originalTransaction->flow === 'E') {
             DB::rollBack();
             return response()->json([
@@ -653,25 +615,18 @@ class WalletController extends Controller
             ], 422);
         }
 
-        // Get chargeback transaction type
         $chargebackType = TransactionType::where('code', 'CHARGEBACK')->first();
 
-        // Calculate balance
         $balance = $account->balance;
         $balanceBefore = $balance->amount;
 
-        // Reverse the original transaction
-        // If original was credit (C), chargeback is debit
-        // If original was debit (D), chargeback is credit
         $amount = $originalTransaction->amount;
         $balanceAfter = $originalTransaction->flow === 'C'
             ? $balanceBefore - $amount
             : $balanceBefore + $amount;
 
-        // Update balance
         $balance->update(['amount' => $balanceAfter]);
 
-        // Create chargeback transaction
         $chargebackTransaction = Transaction::create([
             'account_id' => $account->id,
             'transaction_type_id' => $chargebackType->id,
@@ -689,7 +644,6 @@ class WalletController extends Controller
             ],
         ]);
 
-        // Mark original transaction as chargebacked
         $originalTransaction->update(['is_chargebacked' => true]);
 
         DB::commit();
@@ -750,7 +704,6 @@ class WalletController extends Controller
             throw new InvalidAccountException('Conta não encontrada ou inativa');
         }
 
-        // Get the original transaction
         $originalTransaction = Transaction::where('id', $request->transaction_id)
             ->where('account_id', $account->id)
             ->lockForUpdate()
@@ -763,7 +716,6 @@ class WalletController extends Controller
             ], 404);
         }
 
-        // Check if already contested
         if ($originalTransaction->is_contested) {
             DB::rollBack();
             return response()->json([
@@ -775,7 +727,6 @@ class WalletController extends Controller
             ], 422);
         }
 
-        // Cannot contest a contestation
         if ($originalTransaction->flow === 'E') {
             DB::rollBack();
             return response()->json([
@@ -783,28 +734,22 @@ class WalletController extends Controller
             ], 422);
         }
 
-        // Get transaction type (will be marked as CHARGEBACK with flow E)
         $contestationType = TransactionType::where('code', 'CHARGEBACK')->first();
 
-        // Calculate balance - reverse the original transaction
         $balance = $account->balance;
         $balanceBefore = $balance->amount;
 
-        // If original was credit (C), contestation removes the credit (debit)
-        // If original was debit (D), contestation returns the money (credit)
         $amount = $originalTransaction->amount;
         $balanceAfter = $originalTransaction->flow === 'C'
-            ? $balanceBefore - $amount  // Was credit, now remove it
-            : $balanceBefore + $amount; // Was debit, now return it
+            ? $balanceBefore - $amount
+            : $balanceBefore + $amount;
 
-        // Update balance
         $balance->update(['amount' => $balanceAfter]);
 
-        // Create contestation transaction with flow = 'E' (Estorno)
         $contestationTransaction = Transaction::create([
             'account_id' => $account->id,
             'transaction_type_id' => $contestationType->id,
-            'flow' => 'E',  // Estorno
+            'flow' => 'E',
             'amount' => $amount,
             'balance_before' => $balanceBefore,
             'balance_after' => $balanceAfter,
@@ -819,7 +764,6 @@ class WalletController extends Controller
             ],
         ]);
 
-        // Mark original transaction as contested
         $originalTransaction->update([
             'is_contested' => true,
             'contested_at' => now(),
@@ -967,13 +911,11 @@ class WalletController extends Controller
         $transactionType = $request->transaction_type;
         $perPage = $request->get('per_page', 15);
 
-        // Build query for transactions in period
         $query = Transaction::where('account_id', $account->id)
             ->with('transactionType')
             ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
             ->orderBy('created_at', 'desc');
 
-        // Filter by transaction type if provided
         if ($transactionType) {
             $query->whereHas('transactionType', function ($q) use ($transactionType) {
                 $q->where('code', $transactionType);
@@ -982,7 +924,6 @@ class WalletController extends Controller
 
         $transactions = $query->get();
 
-        // Calculate opening balance (balance before start date)
         $firstTransaction = Transaction::where('account_id', $account->id)
             ->whereDate('created_at', '<', $startDate)
             ->orderBy('created_at', 'desc')
@@ -990,24 +931,19 @@ class WalletController extends Controller
 
         $openingBalancePeriod = $firstTransaction ? $firstTransaction->balance_after : 0;
 
-        // Group transactions by date
         $transactionsByDate = $transactions->groupBy(function ($transaction) {
             return $transaction->created_at->format('Y-m-d');
         });
 
-        // Process each day
         $dailyStatements = [];
         $runningBalance = $openingBalancePeriod;
 
         foreach ($transactionsByDate->sortKeysDesc() as $date => $dayTransactions) {
-            // Calculate opening balance for this day
             $dayOpeningBalance = $runningBalance;
 
-            // Calculate totals for the day
             $totalCredits = 0;
             $totalDebits = 0;
 
-            // Process transactions and add balance_after to each
             $processedTransactions = $dayTransactions->sortByDesc('created_at')->map(function ($transaction) use (&$totalCredits, &$totalDebits) {
                 $type = $transaction->transactionType->code;
 
@@ -1034,12 +970,10 @@ class WalletController extends Controller
             ];
         }
 
-        // Paginate daily statements
         $currentPage = $request->get('page', 1);
         $pagedData = array_slice($dailyStatements, ($currentPage - 1) * $perPage, $perPage);
         $total = count($dailyStatements);
 
-        // Calculate summary
         $allTransactions = $transactions;
         $totalCredits = $allTransactions->filter(function ($t) {
             return in_array($t->transactionType->code, ['DEPOSIT', 'TRANSFER_RECEIVED']);

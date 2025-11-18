@@ -22,7 +22,6 @@ class TransferRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Support both old format (account_number) and new format (agency + account)
             'receiver_account_number' => ['required_without_all:receiver_agency,receiver_account', 'string', 'nullable'],
             'receiver_agency' => ['required_without:receiver_account_number', 'string', 'size:4', 'nullable'],
             'receiver_account' => ['required_without:receiver_account_number', 'string', 'size:9', 'nullable'],

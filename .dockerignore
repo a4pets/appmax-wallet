@@ -55,8 +55,6 @@ yarn-error.log
 
 # Composer
 /vendor
-composer.lock
-
 # Database
 database/*.sqlite
 database/*.sqlite-journal

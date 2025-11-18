@@ -19,7 +19,6 @@ return new class extends Migration
                 ->comment('C = Credit, D = Debit, E = Chargeback');
         });
 
-        // Update existing transactions based on their transaction type
         DB::statement("
             UPDATE transactions
             SET flow = CASE
@@ -33,7 +32,6 @@ return new class extends Migration
             END
         ");
 
-        // Make the column NOT NULL after populating existing data
         Schema::table('transactions', function (Blueprint $table) {
             $table->enum('flow', ['C', 'D', 'E'])
                 ->nullable(false)
