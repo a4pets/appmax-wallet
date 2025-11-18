@@ -62,6 +62,35 @@ php artisan serve
 
 ---
 
+## 👤 Usuários de Teste
+
+A aplicação já vem com um usuário de teste pré-configurado para facilitar o desenvolvimento:
+
+| Campo | Valor |
+|-------|-------|
+| **Nome** | Test User |
+| **Email** | test@example.com |
+| **Senha** | password |
+| **Agência** | Gerada automaticamente |
+| **Conta** | Gerada automaticamente |
+| **Saldo Inicial** | R$ 0,00 |
+| **Limites Diários** | Depósito: R$ 10.000 / Saque: R$ 5.000 / Transferência: R$ 5.000 |
+
+### Login Rápido
+
+```bash
+curl -X POST "http://localhost:8000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "email": "test@example.com",
+      "password": "password"
+    }
+  }'
+```
+
+---
+
 ## 📦 Exemplos Práticos
 
 A pasta `examples/` contém recursos úteis para começar rapidamente:

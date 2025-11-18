@@ -183,7 +183,7 @@ return [
                     'type' => 'oauth2',
                     'description' => 'A short description for oauth2 security scheme.',
                     'flow' => 'implicit',
-                    'authorizationUrl' => 'http:
+                    'authorizationUrl' => 'http://example.com/oauth/authorize',
                     'scopes' => [
                         'read:projects' => 'read your projects',
                         'write:projects' => 'modify projects in your account',
@@ -310,7 +310,7 @@ return [
          * Constants which can be used in annotations
          */
         'constants' => [
-            'L5_SWAGGER_CONST_HOST' => env('L5_SWAGGER_CONST_HOST', 'http:
+            'L5_SWAGGER_CONST_HOST' => env('L5_SWAGGER_CONST_HOST', 'http://localhost'),
         ],
     ],
 ];
