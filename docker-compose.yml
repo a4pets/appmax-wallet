@@ -30,7 +30,30 @@ services:
         php artisan l5-swagger:generate &&
         /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
       "
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: digital-wallet-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - wallet-network
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
 networks:
   wallet-network:
     driver: bridge
+
+volumes:
+  redis_data:
+    driver: local

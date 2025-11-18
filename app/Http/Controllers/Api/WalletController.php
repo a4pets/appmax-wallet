@@ -105,6 +105,9 @@ class WalletController extends Controller
         return response()->json([
             'data' => [
                 'account_number' => $account->account_number,
+                'agency' => $account->agency,
+                'account' => $account->account,
+                'account_digit' => $account->account_digit,
                 'balance' => (float) $account->balance->amount,
                 'account_type' => $account->account_type,
                 'status' => $account->status,
@@ -424,12 +427,24 @@ class WalletController extends Controller
             throw new InvalidAccountException('Conta de origem não encontrada ou inativa');
         }
 
-        // Get receiver account
-        $receiverAccount = Account::where('account_number', $request->receiver_account_number)
-            ->where('status', 'active')
+        // Get receiver account - support both account_number and agency+account
+        $receiverQuery = Account::where('status', 'active')
             ->with('balance')
-            ->lockForUpdate()
-            ->first();
+            ->lockForUpdate();
+
+        if ($request->filled('receiver_account_number')) {
+            // Old format: using account_number (DW12345678)
+            $receiverQuery->where('account_number', $request->receiver_account_number);
+        } elseif ($request->filled('receiver_agency') && $request->filled('receiver_account')) {
+            // New format: using agency + account
+            $receiverQuery->where('agency', $request->receiver_agency)
+                ->where('account', $request->receiver_account);
+        } else {
+            DB::rollBack();
+            throw new InvalidAccountException('Informe o número da conta ou a agência e conta de destino');
+        }
+
+        $receiverAccount = $receiverQuery->first();
 
         if (!$receiverAccount) {
             DB::rollBack();

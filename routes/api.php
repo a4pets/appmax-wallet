@@ -3,15 +3,21 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\WalletController;
+use App\Http\Controllers\Api\AccountController;
 
 // Public routes (no authentication required)
-Route::prefix('auth')->group(function () {
+// Rate limit: 5 requests per minute to prevent brute force attacks
+Route::prefix('auth')->middleware('throttle:5,1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
 
+// Public account list for testing
+Route::get('/accounts', [AccountController::class, 'list']);
+
 // Protected routes (JWT authentication required)
-Route::middleware('jwt.auth')->group(function () {
+// Rate limit: 60 requests per minute for general API usage
+Route::middleware(['jwt.auth', 'throttle:60,1'])->group(function () {
     // Auth routes
     Route::prefix('auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
@@ -19,15 +25,20 @@ Route::middleware('jwt.auth')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
     });
 
-    // Wallet routes
+    // Wallet routes - read operations
     Route::prefix('wallet')->group(function () {
         Route::get('/balance', [WalletController::class, 'balance']);
+        Route::get('/transaction/{id}', [WalletController::class, 'transaction']);
+        Route::get('/statement', [WalletController::class, 'statement']);
+    });
+
+    // Wallet routes - write operations (stricter rate limit)
+    // Rate limit: 10 transactions per minute to prevent abuse
+    Route::prefix('wallet')->middleware('throttle:10,1')->group(function () {
         Route::post('/deposit', [WalletController::class, 'deposit']);
         Route::post('/withdraw', [WalletController::class, 'withdraw']);
         Route::post('/transfer', [WalletController::class, 'transfer']);
         Route::post('/chargeback', [WalletController::class, 'chargeback']);
         Route::post('/contestar', [WalletController::class, 'contestar']);
-        Route::get('/transaction/{id}', [WalletController::class, 'transaction']);
-        Route::get('/statement', [WalletController::class, 'statement']);
     });
 });

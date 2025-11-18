@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Add UnwrapRequestData middleware to API routes
         $middleware->api(append: [
             \App\Http\Middleware\UnwrapRequestData::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
